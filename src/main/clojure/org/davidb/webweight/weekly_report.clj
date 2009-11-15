@@ -72,6 +72,31 @@
     (reduce daily-combine empty-day
             (map morph-record coll))))
 
+;;; Note, non-tail-recursion.  Fine for 7-day weeks, but should be
+;;; lazy if the sequence gets too long.
+(defn update-net-change
+  "Compute the daily \"Net Weight\" value, which is cumulative
+  across the days."
+  [days]
+  (letfn
+    [(lp [[day & rest-days :as days] day-number cum-cals]
+         (when day
+           (let [total-cals (:total-calories day)
+                 pa-cals (:PA day)
+                 net-cals (- total-cals pa-cals)
+                 cum-cals (+ cum-cals net-cals)
+                 weight (:weight day)
+                 net-change (/ (- cum-cals (* 13 weight day-number))
+                               (* 500.0 day-number))]
+             (cons
+               (assoc day :net-change net-change)
+               (lp rest-days (inc day-number) cum-cals)))))]
+    (lp days 1 0)))
+
+(defn compute-summary-line
+  [days]
+  (reduce daily-combine empty-day days))
+
 (defstruct column :title :field :formatter)
 (defn st
   "Generate a formatter for the given format spec."
@@ -90,7 +115,13 @@
    (struct column "Total Cals" :total-calories (st "%.0f"))
    (struct column "Net Cals" :net-cals (st "%.0f"))
    (struct column "Daily Weight" :daily-change (st "%.2f"))
-   (struct column "Net Weight" :net-change (fn [_] "todo"))])
+   (struct column "Net Weight" :net-change (st "%.2f"))])
+(defvar summary-columns
+  `[~(struct column "Day" nil (fn [_] ""))
+    ~(struct column "Date" nil (fn [_] "totals"))
+    ~@(subvec columns 2 10)
+    ~(struct column "Date" nil (fn [_] ""))
+    ~(struct column "Net Weight" :net-change (st "%.2f"))])
 (defvar table-header
   `[:tr
     ~@(map (fn [r] [:th (:title r)]) columns)])
@@ -98,7 +129,7 @@
   `[:tr
     ~@(replicate (count columns) [:th])])
 (defn make-table-row
-  [daily]
+  [daily columns]
   (let [fields
         (let-map [col columns]
           (let [item (get daily (:field col))]
@@ -107,10 +138,13 @@
 
 (defn make-table
   [weekly]
-  `[:table {:border 1}
-    ~table-header
-    ~@(map make-table-row (map fold-day weekly))
-    ~table-header])
+  (let [days (update-net-change (map fold-day weekly))]
+    `[:table {:border 1}
+      ~table-header
+      ~@(map #(make-table-row % columns) days)
+      ~table-header
+      ~(make-table-row (compute-summary-line days) summary-columns)
+      ]))
 
 (defn get-date-range
   "Extract the date range out of the user-supplied data."
@@ -135,6 +169,6 @@
      [:p [:a {:href "?"} "&lt;= Back to index"]]
      ~(make-table weekly)]])
 
-(use '[org.davidb.webweight.daily :as daily])
-(def x (daily/decode-file (java.io.File. "/home/davidb/weight/2009-11-11.dat")))
+;(use '[org.davidb.webweight.daily :as daily])
+;(def x (daily/decode-file (java.io.File. "/home/davidb/weight/2009-11-11.dat")))
 ;(def a (fold-day (first x)))
