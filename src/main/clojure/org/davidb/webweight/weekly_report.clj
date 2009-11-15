@@ -15,7 +15,7 @@
 ;;; fields are accumulated, and others are computed at the end.
 
 (defvar daily-sum-fields
-  #{:S :C :E :B :F :V :P :PA :total-calories}
+  [:S :C :E :B :F :V :P :PA :total-calories]
   "Fields from the records that are folded to produce an summary.")
 (defvar empty-day
   (into {} (map (fn [k] [k 0]) daily-sum-fields)))
@@ -26,17 +26,31 @@
   (if-let [tag (:tag record)]
     (assoc record tag (:count record))
     record))
+(defvar daily-sum
+  (into {}
+        (let-map [k daily-sum-fields]
+          [k +]))
+  "Map associating a combining function for summarizing values.")
+
 (defn record-combine
-  "Combines two records from a given day.  Fields mentioned in
-  daily-sum-fields will be included, and the rest will be used from
-  the 'b' field."
-  [a b]
+  "Combines two records.  The sum-map gives a function that will be
+  used to combine fields from the two records.  For each key that is
+  present in all three maps, the function from 'sum-map' will be
+  applied to the values in 'a' and 'b' to produce the new value for
+  this field.  Otherwise, the field will be combined as per 'merge'."
+  [sum-map a b]
   (let [a-keys (set (keys a))
         b-keys (set (keys b))
-        inter-keys (intersection a-keys b-keys daily-sum-fields)
-        updates (map (fn [k] [k (+ (get a k) (get b k))]) inter-keys)
+        sum-keys (set (keys sum-map))
+        inter-keys (intersection a-keys b-keys sum-keys)
+        updates (map (fn [k] [k ((get sum-map k) (get a k) (get b k))]) inter-keys)
         updates (into {} updates)]
     (merge a b updates)))
+
+(defn daily-combine
+  "Combine two records  within a single day."
+  [a b]
+  (record-combine daily-sum a b))
 
 (defn daily-computation
   "Perform some interfield computations for a single day."
@@ -55,7 +69,7 @@
   "Fold all of the records from one day together."
   [coll]
   (daily-computation
-    (reduce record-combine empty-day
+    (reduce daily-combine empty-day
             (map morph-record coll))))
 
 (defstruct column :title :field :formatter)
