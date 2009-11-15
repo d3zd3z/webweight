@@ -80,6 +80,9 @@
 (defvar table-header
   `[:tr
     ~@(map (fn [r] [:th (:title r)]) columns)])
+(defvar table-sep
+  `[:tr
+    ~@(replicate (count columns) [:th])])
 (defn make-table-row
   [daily]
   (let [fields
@@ -92,7 +95,8 @@
   [weekly]
   `[:table {:border 1}
     ~table-header
-    ~@(map make-table-row (map fold-day weekly))])
+    ~@(map make-table-row (map fold-day weekly))
+    ~table-header])
 
 (defn get-date-range
   "Extract the date range out of the user-supplied data."
@@ -107,9 +111,14 @@
   "Generate a weekly report from the weekly record."
   [weekly]
   `[:html
-    [:head [:title "Weight report"]]
+    [:head
+     [:link {:rel "stylesheet",
+             :type "text/css",
+             :href "/style/clean-table.css"}]
+     [:title "Weight report"]]
     [:body
      [:h1 ~(get-date-range weekly)]
+     [:p [:a {:href "?"} "&lt;= Back to index"]]
      ~(make-table weekly)]])
 
 (use '[org.davidb.webweight.daily :as daily])
