@@ -1,4 +1,5 @@
 (ns org.davidb.webweight.index
+  (:use [compojure :only [xhtml-tag]])
   (:use [clojure.contrib def
          [seq-utils :only [partition-by]]])
   (:require [org.davidb.webweight
@@ -97,9 +98,10 @@
 (defn generate
   "Generate the index based on the current log files."
   []
-  `[:html
+  (xhtml-tag
+    "en"
     [:head [:title "Weight reports"]]
-    [:body [:h1 "Weight reports"]]
-    ~@(apply concat (map encode-year (by-years-and-months (get-logs))))])
+    `[:body [:h1 "Weight reports"]
+      ~@(apply concat (map encode-year (by-years-and-months (get-logs))))]))
 
 (defn hello [] (println (str "Files are in: " base/root)))

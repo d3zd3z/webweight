@@ -7,6 +7,12 @@
              [daily :as daily]
              [weekly-report :as weekly-report]]))
 
+(defn wrap-html
+  [tree]
+  ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+   (doctype :xhtml-transitional)
+   (html tree)])
+
 (defn gen-weight
   [params]
   (if-let [date (:date params)]
@@ -14,9 +20,9 @@
           (-> weekly-file
             (daily/decode-file)
             (weekly-report/generate)
-            (html)))
+            (wrap-html)))
         (page-not-found))
-    (html (index/generate))))
+    (wrap-html (index/generate))))
 
 (defn htmlify-request
   [request]

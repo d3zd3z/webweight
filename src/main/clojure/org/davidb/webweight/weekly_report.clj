@@ -1,4 +1,5 @@
 (ns org.davidb.webweight.weekly-report
+  (:use [compojure :only [xhtml-tag]])
   (:use [org.davidb.contrib.map-utils])
   (:use [clojure.set])
   (:use [clojure.contrib def])
@@ -158,16 +159,17 @@
 (defn generate
   "Generate a weekly report from the weekly record."
   [weekly]
-  `[:html
+  (xhtml-tag
+    "en"
     [:head
      [:link {:rel "stylesheet",
              :type "text/css",
              :href "/style/clean-table.css"}]
      [:title "Weight report"]]
-    [:body
-     [:h1 ~(get-date-range weekly)]
-     [:p [:a {:href "?"} "&lt;= Back to index"]]
-     ~(make-table weekly)]])
+    `[:body
+      [:h1 ~(get-date-range weekly)]
+      [:p [:a {:href "?"} "&lt;= Back to index"]]
+      ~(make-table weekly)]))
 
 ;(use '[org.davidb.webweight.daily :as daily])
 ;(def x (daily/decode-file (java.io.File. "/home/davidb/weight/2009-11-11.dat")))
