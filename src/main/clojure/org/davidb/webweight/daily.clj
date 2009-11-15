@@ -50,11 +50,15 @@
       {:tag (keyword (nth m 2)), :time (nth m 1), :count 1,
        :kind (keyword (nth m 3))})
 
+    (re-matches #"^\s+(\d\d:\d\d) C$" line)
+    {:tag :C, :time (nth m 1), :count 1,
+     :calories 210, :total-calories 210}
+
     (re-matches #"^\s+(\d\d:\d\d) (PA) (\d+) (.*)$" line)
     {:tag :PA, :time (nth m 1), :count (Double/parseDouble (nth m 3)),
      :description (nth m 4)}
 
-    (re-matches #"^\s+(\d\d:\d\d) ([VFP]) (\d+) ([\w+-]+)$" line)
+    (re-matches #"^\s+(\d\d:\d\d) ([VFP]) ([\d\.]+) ([\w+-]+)$" line)
     (qualify-food
       {:tag (keyword (nth m 2)), :time (nth m 1),
        :count (Double/parseDouble (nth m 3)),

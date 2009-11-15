@@ -3,12 +3,18 @@
   (:use [clojure.contrib def str-utils])
   (:use [org.davidb.contrib map-utils])
   (:require [org.davidb.webweight
-             [index :as index]]))
+             [index :as index]
+             [daily :as daily]
+             [weekly-report :as weekly-report]]))
 
 (defn gen-weight
   [params]
   (if-let [date (:date params)]
-    (or (index/lookup-date date)
+    (or (if-let [weekly-file (index/lookup-date date)]
+          (-> weekly-file
+            (daily/decode-file)
+            (weekly-report/generate)
+            (html)))
         (page-not-found))
     (html (index/generate))))
 
