@@ -39,7 +39,7 @@
     (re-matches #"^weight\s*=\s*([\d\.]+)$" line)
     {:tag :weight, :value (Double/parseDouble (nth m 1))}
 
-    (re-matches #"^\s*$" line)
+    (re-matches #"^\s*(#.*)?$" line)
     {:tag :blank}
 
     (re-matches #"^(\d\d\d\d-\d\d-\d\d):$" line)
