@@ -1,9 +1,8 @@
 (ns org.davidb.webweight.daily
   (:use [clojure.contrib def cond fcase
          [duck-streams :only [read-lines]]])
-  (:require [org.danlarkin [json :as json]])
+  (:use [org.davidb.webweight.foods :only [load-foods]])
   (:require [org.davidb.webweight [base :as base]])
-  (:import [java.io File FileReader])
   (:import [java.util Calendar Date])
   (:import [java.text DateFormat ParsePosition SimpleDateFormat]))
 
@@ -17,11 +16,6 @@
 (defvar- #^DateFormat time-parser (SimpleDateFormat. "HH:mm"))
 
 (defvar- *foods* nil)
-(defn- read-foods
-  "Read the foods database, and return it."
-  []
-  (with-open [f (FileReader. (File. base/root "foods.json"))]
-    (json/decode-from-reader f)))
 
 (defn- qualify-food
   "Given a tagged item, look up the tag and the kind in the food database
@@ -92,5 +86,5 @@
 (defn decode-file
   "Decode the contents of the file into a lazy sequence of tagged matches."
   [path]
-  (binding [*foods* (read-foods)]
+  (binding [*foods* (load-foods)]
     (parse-records (map decode (read-lines path)))))
