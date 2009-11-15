@@ -29,6 +29,7 @@
 	      <goal>compile</goal>
 	    </goals>
 	  </execution>
+	  <!--
 	  <execution>
 	    <id>test</id>
 	    <phase>test</phase>
@@ -36,6 +37,7 @@
 	      <goal>test</goal>
 	    </goals>
 	  </execution>
+	  -->
 	</executions>
       </plugin>
     </plugins>
@@ -52,6 +54,16 @@
       <groupId>org.clojure</groupId>
       <artifactId>clojure-contrib</artifactId>
       <version>1.0-20091103.103638-111</version>
+    </dependency>
+    <dependency>
+      <groupId>org.danlarkin</groupId>
+      <artifactId>clojure-json</artifactId>
+      <version>1.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.weavejester</groupId>
+      <artifactId>compojure</artifactId>
+      <version>0.3.1-SNAPSHOT</version>
     </dependency>
 
     <!--

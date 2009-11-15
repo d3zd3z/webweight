@@ -6,6 +6,7 @@
 (use 'clojure.contrib.ns-utils)
 (use 'clojure.contrib.test-is)
 (use 'clojure.contrib.sql)
+(use 'clojure.contrib.pprint)
 
 (set! *warn-on-reflection* true)
 
