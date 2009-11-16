@@ -111,6 +111,7 @@
    (struct column "S" :S (st "%.0f"))
    (struct column "C" :C (st "%.0f"))
    (struct column "E" :E (st "%.0f"))
+   (struct column "B" :B (st "%.0f"))
    (struct column "F" :F (st "%.0f"))
    (struct column "V" :V (st "%.0f"))
    (struct column "PA" :PA (st "%.0f"))
@@ -121,7 +122,7 @@
 (defvar summary-columns
   `[~(struct column "Day" nil (fn [_] ""))
     ~(struct column "Date" nil (fn [_] "totals"))
-    ~@(subvec columns 2 10)
+    ~@(subvec columns 2 11)
     ~(struct column "Date" nil (fn [_] ""))
     ~(struct column "Net Weight" :net-change (st "%.2f"))])
 (defvar table-header
