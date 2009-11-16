@@ -3,6 +3,7 @@
   (:use [org.davidb.contrib.map-utils])
   (:use [clojure.set])
   (:use [clojure.contrib def])
+  (:require [org.davidb.contrib [xml :as xml] [html :as html]])
   (:require [compojure :as compojure])
   (:import [java.text DateFormat SimpleDateFormat]))
 
@@ -124,28 +125,26 @@
     ~(struct column "Date" nil (fn [_] ""))
     ~(struct column "Net Weight" :net-change (st "%.2f"))])
 (defvar table-header
-  `[:tr
-    ~@(map (fn [r] [:th (:title r)]) columns)])
+  (xml/node :tr (map (fn [r] (html/th (:title r))) columns)))
 (defvar table-sep
-  `[:tr
-    ~@(replicate (count columns) [:th])])
+  (xml/node :tr (replicate (count columns) (html/th))))
 (defn make-table-row
   [daily columns]
   (let [fields
         (let-map [col columns]
           (let [item (get daily (:field col))]
-            [:td ((:formatter col) item)]))]
-    `[:tr ~@fields]))
+            (html/td ((:formatter col) item))))]
+    (xml/node :tr fields)))
 
 (defn make-table
   [weekly]
   (let [days (update-net-change (map fold-day weekly))]
-    `[:table {:border 1}
-      ~table-header
-      ~@(map #(make-table-row % columns) days)
-      ~table-header
-      ~(make-table-row (compute-summary-line days) summary-columns)
-      ]))
+    (xml/eltcat
+      :table :attrs {:border "1"}
+      [table-header]
+      (map #(make-table-row % columns) days)
+      [table-header
+       (make-table-row (compute-summary-line days) summary-columns)])))
 
 (defn get-date-range
   "Extract the date range out of the user-supplied data."
@@ -159,17 +158,18 @@
 (defn generate
   "Generate a weekly report from the weekly record."
   [weekly]
-  (xhtml-tag
-    "en"
-    [:head
-     [:link {:rel "stylesheet",
-             :type "text/css",
-             :href "/style/clean-table.css"}]
-     [:title "Weight report"]]
-    `[:body
-      [:h1 ~(get-date-range weekly)]
-      [:p [:a {:href "?"} "&lt;= Back to index"]]
-      ~(make-table weekly)]))
+  (html/html
+    :attrs xml/xhtml1-attrs
+    (html/head
+      (html/title "Weight report")
+      (html/link :attrs {:rel "stylesheet",
+                         :type "text/css",
+                         :href "/style/clean-table.css"}))
+    (html/body
+      (html/h1 (get-date-range weekly))
+      (html/p
+        (html/a :attrs {:href "?"} "<-- Back to index"))
+      (make-table weekly))))
 
 ;(use '[org.davidb.webweight.daily :as daily])
 ;(def x (daily/decode-file (java.io.File. "/home/davidb/weight/2009-11-11.dat")))

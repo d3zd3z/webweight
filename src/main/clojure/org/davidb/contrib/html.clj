@@ -23,4 +23,4 @@
 
 (deftags html head body h1 h2 h3 h4 h5 h6 p hr br table tr th td
          title link col
-         ul li a)
+         ul li ol dl dt dd a b)

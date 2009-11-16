@@ -103,9 +103,7 @@
   "Generate the index based on the current log files."
   []
   (html/html
-    :attrs {:lang "en"
-            "xml:lang" "en"
-            :xmlns "http://www.w3.org/1999/xhtml"}
+    :attrs xml/xhtml1-attrs
     (html/head (html/title "Weight reports"))
     (apply html/body
            (html/h1 "Weight reports")

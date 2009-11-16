@@ -8,12 +8,6 @@
              [daily :as daily]
              [weekly-report :as weekly-report]]))
 
-(defn wrap-html
-  [tree]
-  ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-   (doctype :xhtml-transitional)
-   (html tree)])
-
 (defn gen-weight
   [params]
   (if-let [date (:date params)]
@@ -21,22 +15,16 @@
           (-> weekly-file
             (daily/decode-file)
             (weekly-report/generate)
-            (wrap-html)))
+            ((partial xml/->string xml/xhtml1-strict))))
         (page-not-found))
     (xml/->string xml/xhtml1-strict (index/generate))))
 
 (defn htmlify-request
   [request]
-  (->
-    (let-map [[k v] request]
-      [[:b (escape-html (name k))]
-       ": "
-       (-> (str v)
-         (escape-html)
-         ((partial re-gsub #"(\r\n|\r|\n)" "<br />&nbsp;")))])
-    ((partial interleave (repeat [[:br]])))
-    (rest)
-    ((partial apply concat))))
+  (let-map [[k v] request]
+    (html/dl
+      (html/dt (html/b (name k)))
+      (html/dd (pr-str v)))))
 
 (defroutes
   weight-app
@@ -49,9 +37,14 @@
   (GET "/:prefix/wlog" (gen-weight params))
   ;; (GET "/test" (str params))
   (GET "*"
-       (html
-         `[:html [:head [:title "404 - Not found"]]
-           [:body [:h1 "404 - Not found"] ~@(htmlify-request request)]]))
+       (xml/->string
+         xml/xhtml1-strict
+         (html/html
+           :attrs xml/xhtml1-attrs
+           (html/head (html/title "404 - Not found"))
+           (apply html/body
+                  (html/h1 "404 - Not found")
+                  (htmlify-request request)))))
   #_(ANY "*"
        (page-not-found))
   )
