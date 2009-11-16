@@ -2,6 +2,7 @@
   (:use [compojure :only [xhtml-tag]])
   (:use [clojure.contrib def
          [seq-utils :only [partition-by]]])
+  (:require [org.davidb.contrib [xml :as xml] [html :as html]])
   (:require [org.davidb.webweight
              [base :as base]])
   (:import [java.io File])
@@ -78,30 +79,34 @@
 (defn encode-date
   "HTML tree encoding a date and it's link.  Result is flat."
   [#^Date date]
-  [:a {:href (.format url-date-parser date)}
-   (.format human-date-parser date)])
+  (html/a :attrs {:href (.format url-date-parser date)}
+          (.format human-date-parser date)))
 
 (defn encode-month
   "Given a sequence of dates that fall in a given month, generate
-  an HTML sequence tree rendering this."
+  a sequence of html nodes indicating these."
   [coll]
-  `[[:h3 ~(.format month-parser (first coll))]
-    ~@(interpose "&nbsp; &nbsp;" (map encode-date coll))])
+  [(html/h3 (.format month-parser (first coll)))
+   (apply html/p
+          (interpose "\u00a0 \u00a0"
+                     (map encode-date coll)))])
 
 (defn encode-year
   "Given a sequence of sequences of dates falling in a given year,
   generate an HTML sequence tree rendering this."
   [coll]
-  `[[:h2 ~(.format year-parser (first (first coll)))]
-    ~@(apply concat (map encode-month coll))])
+  (cons
+    (html/h2 (.format year-parser (first (first coll))))
+    (apply concat (map encode-month coll))))
 
 (defn generate
   "Generate the index based on the current log files."
   []
-  (xhtml-tag
-    "en"
-    [:head [:title "Weight reports"]]
-    `[:body [:h1 "Weight reports"]
-      ~@(apply concat (map encode-year (by-years-and-months (get-logs))))]))
-
-(defn hello [] (println (str "Files are in: " base/root)))
+  (html/html
+    :attrs {:lang "en"
+            "xml:lang" "en"
+            :xmlns "http://www.w3.org/1999/xhtml"}
+    (html/head (html/title "Weight reports"))
+    (apply html/body
+           (html/h1 "Weight reports")
+           (apply concat (map encode-year (by-years-and-months (get-logs)))))))

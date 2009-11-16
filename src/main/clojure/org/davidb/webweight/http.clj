@@ -2,6 +2,7 @@
   (:use [compojure])
   (:use [clojure.contrib def str-utils])
   (:use [org.davidb.contrib map-utils])
+  (:require [org.davidb.contrib [xml :as xml] [html :as html]])
   (:require [org.davidb.webweight
              [index :as index]
              [daily :as daily]
@@ -22,7 +23,7 @@
             (weekly-report/generate)
             (wrap-html)))
         (page-not-found))
-    (wrap-html (index/generate))))
+    (xml/->string xml/xhtml1-strict (index/generate))))
 
 (defn htmlify-request
   [request]
