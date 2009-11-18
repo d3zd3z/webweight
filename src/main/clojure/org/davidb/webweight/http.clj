@@ -36,7 +36,7 @@
   (GET "/wlog" (gen-weight params))
   (GET "/:prefix/wlog" (gen-weight params))
   ;; (GET "/test" (str params))
-  (GET "*"
+  (ANY "*"
        (xml/->string
          xml/xhtml1-strict
          (html/html
