@@ -168,9 +168,10 @@
                          :href "/style/clean-table.css"}))
     (html/body
       (html/h1 (get-date-range weekly))
-      (html/p
-        (html/a :attrs {:href "?"} "<-- Back to index"))
-      (make-table weekly))))
+      (make-table weekly)
+      (html/p :attrs {:class "copyright"}
+              "WebWeight.  Copyright \u00A9 2009, David L. Brown, Jr")
+      (html/p (html/a :attrs {:href "?" :class "nav"} "\u21D0 Back to index")))))
 
 ;(use '[org.davidb.webweight.daily :as daily])
 ;(def x (daily/decode-file (java.io.File. "/home/davidb/weight/2009-11-11.dat")))
