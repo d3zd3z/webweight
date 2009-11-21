@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# TODO: this gives us a trailing colon
+VERSION="1.0.0-SNAPSHOT"
+LIBS="$(find -H lib/ -mindepth 2> /dev/null 1 -maxdepth 1 -print0 | tr \\0 \:)"
+CLASSPATH="src/:classes/:$LIBS"
+LEIN_JAR=$HOME/.m2/repository/leiningen/leiningen/$VERSION/leiningen-$VERSION.jar
+
+# this needs to exist before the JVM is launched apparently
+mkdir -p classes
+
+# If we are not running from a compiled checkout
+if [ ! -r "classes/leiningen/core.class" -a ! -r "lib/clojure*jar" ]; then
+    if [ ! -r "$LEIN_JAR" -a "$1" != "self-install" ]; then
+        echo "Leiningen is not installed. Please run \"lein self-install\"."
+        exit 1
+    fi
+
+    CLASSPATH="$CLASSPATH:$LEIN_JAR"
+fi
+
+if [ "$1" = "test" ]; then
+    CLASSPATH=test/:$CLASSPATH
+fi
+
+if [ $DEBUG ]; then
+    echo $CLASSPATH
+fi
+
+# Deps need to run before the JVM launches for tasks that need them
+if [ "$1" = "compile" -o "$1" = "jar" -o "$1" = "uberjar" ]; then
+    if [ ! "$(ls -A lib/*jar 2> /dev/null)" ]; then
+        $0 deps skip-dev
+    fi
+fi
+
+if [ "$1" = "repl" ]; then
+    # If repl used leiningen.core then there'd be no way to bootstrap AOT
+    shift
+    java -cp "repl/:$CLASSPATH" clojure.main "$@"
+elif [ "$1" = "self-install" ]; then
+    echo "Downloading Leiningen now..."
+    mkdir -p `dirname "$LEIN_JAR"`
+    LEIN_URL=http://repo.technomancy.us/leiningen-$VERSION.jar
+    if type -p curl >/dev/null 2>&1; then
+        exec curl -o "$LEIN_JAR" "$LEIN_URL"
+    else
+        exec wget -O "$LEIN_JAR" "$LEIN_URL"
+    fi
+else
+    if [ -z "$1" ]; then
+        echo "$0 missing task"
+        echo "Usage: $0 taskname"
+    else
+        exec java -client -cp "$CLASSPATH" leiningen.core "$@"
+    fi
+fi

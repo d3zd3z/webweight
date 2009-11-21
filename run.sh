@@ -19,7 +19,7 @@ done
 
 # This runs a REPL with the environment.
 rlwrap java "${java_opts[@]}" \
-  -cp src/repl/clojure:src/main/clojure:src/test/clojure:target/repl-lib/'*' \
+  -cp repl/:src/:test/:lib/'*' \
   clojure.main "$@"
 
 # To set this up, you need to use maven to assemble all of the dependencies.
