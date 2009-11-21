@@ -1,0 +1,16 @@
+<ivysettings>
+  <!-- If things aren't found in the public Maven repo, look in my
+  ==== local maven cache.  Allows use of local packages. -->
+
+  <settings defaultResolver="chained"/>
+
+  <resolvers>
+    <chain name="chained" returnFirst="true">
+      <ibiblio name="ibiblio" m2compatible="true"/>
+      <ibiblio name="Clojure Snapshots"
+	root="http://build.clojure.org/snapshots" m2compatible="true"/>
+      <ibiblio name="Local Maven Cache"
+	root="file:///home/davidb/.m2/repository" m2compatible="true"/>
+    </chain>
+  </resolvers>
+</ivysettings>

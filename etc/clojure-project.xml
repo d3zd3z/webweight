@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+  name="clojure-project"
+  default="all"
+  xmlns:ivy="antlib:org.apache.ivy.ant">
+
+  <!--
+  ==== Template project for a basic clojure project.  See the
+  ==== properties below for things that can be overridden.
+  ==== The default project name comes from the ivy.xml file.
+  ==== You need to set the property main.class for the one-jar
+  ==== target to work.
+  -->
+
+  <target name="all" depends="default-lifecycle"/>
+
+  <target name="default-lifecycle"
+    depends="compile-lifecycle, jar" />
+  <target name="compile-lifecycle"
+    depends="resolve, copy-resources, compile-java, compile-clojure" />
+
+  <target name="clean" depends="clean-lifecycle"/>
+
+  <!-- Standard package layout. -->
+  <property name="src.dir" location="${basedir}/src"/>
+  <property name="test.dir" location="${basedir}/test"/>
+  <property name="resource.dir" location="${basedir}/resources"/>
+  <property name="build.dir" location="${basedir}/build"/>
+  <property name="classes.dir" location="${basedir}/build/classes"/>
+  <property name="ivy.lib.dir" location="${basedir}/lib"/>
+  <property name="onejar.scratch.dir" location="${build.dir}/onejar"/>
+
+  <target name="clean-lifecycle">
+    <delete dir="${build.dir}"/>
+    <delete dir="${ivy.lib.dir}"/>
+  </target>
+
+  <target name="copy-resources"
+    depends="check-resources"
+    if="resources.present">
+    <fail/>
+  </target>
+
+  <target name="check-resources">
+    <condition property="resources.present">
+      <available file="${resources.dir}" type="dir"/>
+    </condition>
+  </target>
+
+  <target name="check-src">
+    <condition property="src.present">
+      <available file="${src.dir}" type="dir"/>
+    </condition>
+  </target>
+
+  <target name="compile-java" depends="check-src, classpaths" if="src.present">
+    <mkdir dir="${classes.dir}"/>
+    <javac srcdir="${src.dir}" destdir="${classes.dir}"/>
+  </target>
+
+  <target name="compile-clojure" depends="check-src, classpaths" if="src.present">
+    <mkdir dir="${classes.dir}"/>
+    <!-- Scan for clojure source, and convert to namespace names. -->
+    <pathconvert pathsep=" " property="namespaces">
+      <fileset dir="${src.dir}" includes="**/*.clj" />
+      <chainedmapper>
+	<packagemapper from="${src.dir}/*.clj" to="*" />
+	<filtermapper>
+	  <replacestring from="_" to="-" />
+	</filtermapper>
+      </chainedmapper>
+    </pathconvert>
+
+    <java classname="clojure.lang.Compile">
+      <classpath>
+	<path location="${src.dir}"/>
+	<path location="${classes.dir}"/>
+	<path refid="full.classpath"/>
+      </classpath>
+      <sysproperty key="clojure.compile.path" value="${classes.dir}"/>
+      <arg line="${namespaces}" />
+    </java>
+  </target>
+
+  <target name="jar" depends="compile-lifecycle">
+    <jar jarfile="${jarname}">
+      <fileset dir="${classes.dir}" />
+      <fileset dir="${src.dir}" includes="**/*.clj" />
+    </jar>
+  </target>
+
+  <target name="one-jar" depends="resolve, jar, unpack-onejar">
+    <jar jarfile="${one-jarname}">
+      <zipfileset dir="${build.dir}" includes="${ivy.module}.jar"
+	fullpath="main/main.jar"/>
+      <zipfileset dir="${onejar.scratch.dir}">
+	<include name="**/*.class"/>
+	<include name="**/*.java"/>
+	<include name="doc/*"/>
+      </zipfileset>
+      <zipfileset dir="${ivy.lib.dir}" includes="*.jar" prefix="lib"/>
+      <manifest>
+	<attribute name="One-Jar-Main-Class" value="${main.class}"/>
+	<attribute name="Main-Class" value="com.simontuffs.onejar.Boot"/>
+      </manifest>
+    </jar>
+  </target>
+
+  <target name="unpack-onejar">
+    <mkdir dir="${onejar.scratch.dir}"/>
+    <unzip src="one-jar/one-jar-boot.jar" dest="${onejar.scratch.dir}"/>
+  </target>
+
+  <target name="classpaths" depends="resolve">
+    <path id="full.classpath">
+      <fileset dir="${ivy.lib.dir}" includes="**/*.jar" />
+    </path>
+  </target>
+
+  <target name="resolve">
+    <ivy:resolve log="quiet" />
+    <ivy:retrieve conf="default" type="jar" />
+
+    <property name="jarname" location="${build.dir}/${ivy.module}.jar"/>
+    <property name="one-jarname" location="${build.dir}/${ivy.module}-one.jar"/>
+  </target>
+</project>

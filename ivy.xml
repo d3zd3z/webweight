@@ -1,0 +1,9 @@
+<ivy-module version="2.0">
+  <info organisation="org.davidb" module="webweight"/>
+  <dependencies>
+    <dependency org="org.clojure" name="clojure" rev="1.1.0-alpha-SNAPSHOT"/>
+    <dependency org="org.clojure" name="clojure-contrib" rev="1.0-SNAPSHOT"/>
+    <dependency org="com.weavejester" name="compojure" rev="0.3.1-SNAPSHOT"/>
+    <dependency org="org.yaml" name="snakeyaml" rev="1.4"/>
+  </dependencies>
+</ivy-module>
