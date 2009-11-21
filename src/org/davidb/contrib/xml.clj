@@ -1,7 +1,9 @@
 (ns org.davidb.contrib.xml
   (:use clojure.xml)
   (:use [clojure.contrib [pprint :only [pprint]]])
-  (:import [clojure.lang Named]))
+  (:import [clojure.lang Named])
+  (:import [java.io StringWriter])
+  (:import [javax.xml.stream XMLEventFactory XMLOutputFactory]))
 
 ;;; Fixes for some deficiencies to Clojure's XML handling.  Parse seems to
 ;;; work OK, but generation is lacking.
@@ -67,63 +69,45 @@
 ;;; Then, a new emit, since the Clojure one is completely wrong, and
 ;;; doesn't properly escape characters.
 
-(defn escape-xml
-  "Change invalid XML characters into entities."
-  [string]
-  (.. #^String string
-    (replace "&" "&amp;")
-    (replace "<" "&lt;")
-    (replace ">" "&gt;")
-    (replace "\"" "&quot;")))
+;(def factory (XMLEventFactory/newInstance))
+;(def factory (.createXMLStreamWriter (XMLOutputFactory/newInstance) (StringWriter.)))
+;(def sample (elt :html :stuff "val\"ue of stuff" "\u2022Th<is\u00a0is v&er>y s\"imple"
+;                 (elt :p :class "stuff")))
 
-;;; Non-functional, StringBuilder version.
-(def *out-writer*)
-(defn- append
-  "Append one or more strings.  Must be String."
-  [& text]
-  (doseq [piece text]
-    (.append #^StringBuilder *out-writer* #^String piece)))
-
-(defn- add-attributes
-  "Add the map of attributes.  The keys must be either strings or keywords,
-  and are not checked for valid characters.  The values must be Strings and
-  will be escaped."
-  [atts]
-  (doseq [[k v] atts]
-    (let [k (if (instance? Named k) (name k) k)]
-      (append " " k "=\"" (escape-xml v) "\""))))
-
-(defn- add-element
-  [e]
-  (if (instance? String e)
-    (append (escape-xml e))
-    (do
-      (append "<" (name (:tag e)))
-      (add-attributes (:attrs e))
-      (if-let [content (seq (:content e))]
-        (do
-          (append ">")
-          (doseq [c content]
-            (add-element c))
-          (append "</" (name (:tag e)) ">"))
-        (append " />")))))
-
+;; Things to do:
+;; Handle non-default namespaces.
 (defn ->string
-  ([doctype tree]
-   (let [s (StringBuilder.)]
-     (binding [*out-writer* s]
-       (append "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-       (when (string? doctype)
-         (append doctype "\n"))
-       (add-element tree))
-     (str s)))
-  ([tree]
-   (->string nil tree)))
-
-#_ (defn ->string
   [doctype tree]
-  (with-out-str
-    (pprint tree)))
+  (let [output-factory (XMLOutputFactory/newInstance)
+        writer (StringWriter.)
+        out (.createXMLStreamWriter output-factory writer)
+        walk (fn walk [node top]
+               (cond
+                 (string? node)
+                 (.writeCharacters out node)
+
+                 (empty? (:content node))
+                 (do
+                   (.writeEmptyElement out (name (:tag node)))
+                   (doseq [[k v] (:attrs node)]
+                     (.writeAttribute out (name k) v)))
+
+                 :else
+                 (do
+                   (.writeStartElement out (name (:tag node)))
+                   (doseq [[k v] (:attrs node)]
+                     (.writeAttribute out (name k) v))
+                   (doseq [child (:content node)]
+                     (walk child false))
+                   (.writeEndElement out))
+               ))]
+    (.writeStartDocument out "UTF-8" "1.0")
+    (.writeDTD out doctype)
+    (.writeEndDocument out)
+    ;; Setting default namespace.
+    (walk tree true)
+    (.flush out)
+    (str writer)))
 
 (def xhtml1-transitional
   "<!DOCTYPE html
@@ -136,5 +120,5 @@
 
 (def xhtml1-attrs
   {:lang "en"
-   "xml:lang" "en"
+   ':xml:lang "en"
    :xmlns "http://www.w3.org/1999/xhtml"})
