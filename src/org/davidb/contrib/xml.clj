@@ -2,13 +2,12 @@
   (:use clojure.xml)
   (:use [clojure.contrib [pprint :only [pprint]]])
   (:import [clojure.lang Named])
-  (:import [java.io StringWriter])
-  (:import [org.w3c.dom Document Node])
-  (:import [javax.xml.stream XMLEventFactory XMLOutputFactory])
-  (:import [javax.xml.transform OutputKeys TransformerFactory])
-  (:import [javax.xml.transform.dom DOMSource])
+  (:import [java.io Writer StringWriter])
+  (:import [org.xml.sax.helpers AttributesImpl])
+  (:import [javax.xml.transform OutputKeys])
+  (:import [javax.xml.transform.sax SAXTransformerFactory TransformerHandler])
   (:import [javax.xml.transform.stream StreamResult])
-  (:import [javax.xml.parsers DocumentBuilderFactory]))
+  )
 
 ;;; Fixes for some deficiencies to Clojure's XML handling.  Parse seems to
 ;;; work OK, but generation is lacking.
@@ -71,115 +70,69 @@
   (let [[atts content] (decode-xml-args args)]
     (struct element tag atts (check-content (apply concat content)))))
 
-;;; Then, a new emit, since the Clojure one is completely wrong, and
-;;; doesn't properly escape characters.
+;;; Use a transformer from Java's XML library to render the XML.
 
-;(def factory (XMLEventFactory/newInstance))
-;(def factory (.createXMLStreamWriter (XMLOutputFactory/newInstance) (StringWriter.)))
-
-;; Things to do:
-;; Handle non-default namespaces.
-(defn old->string
-  [doctype tree]
-  (let [output-factory (XMLOutputFactory/newInstance)
-        writer (StringWriter.)
-        out (.createXMLStreamWriter output-factory writer)
-        walk (fn walk [node top]
-               (cond
-                 (string? node)
-                 (.writeCharacters out node)
-
-                 (empty? (:content node))
-                 (do
-                   (.writeEmptyElement out (name (:tag node)))
-                   (doseq [[k v] (:attrs node)]
-                     (.writeAttribute out (name k) v)))
-
-                 :else
-                 (do
-                   (.writeStartElement out (name (:tag node)))
-                   (doseq [[k v] (:attrs node)]
-                     (.writeAttribute out (name k) v))
-                   (doseq [child (:content node)]
-                     (walk child false))
-                   (.writeEndElement out))
-               ))]
-    (.writeStartDocument out "UTF-8" "1.0")
-    (.writeDTD out doctype)
-    (.writeEndDocument out)
-    ;; Setting default namespace.
-    (walk tree true)
-    (.flush out)
-    (str writer)))
-
-(def xhtml1-transitional
-  "<!DOCTYPE html
-  PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"
-  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">")
-(def xhtml1-strict
-  "<!DOCTYPE html
-  PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"
-  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">")
 (def xhtml-ns "http://www.w3.org/1999/xhtml")
+(def xhtml1-transitional
+  {:public "-//W3C//DTD XHTML 1.0 Transitional//EN"
+   :system "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
+   :ns xhtml-ns})
+(def xhtml1-strict
+  {:public "-//W3C//DTD XHTML 1.0 Strict//EN"
+   :system "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"
+   :ns xhtml-ns})
 
-(def sample (elt :html
-                 :stuff "val\"ue of stuff"
-                 :another "\u2022Th<is\u00a0is v&er>y s\"imple"
-                 :and "this is another fairly long attribute"
-                 :more "to see how it does at formatting them"
-                 (elt :p :class "stuff")))
+;(def sample (elt :html
+;                 :stuff "val\"ue of stuff"
+;                 :another "\u2022Th<is\u00a0is v&er>y s\"imple"
+;                 :and "this is another fairly long attribute"
+;                 :more "to see how it does at formatting them"
+;                 (elt :p :class "stuff")))
 
-(defn #^Document make-document
-  "Construct an empty DOM document."
-  []
-  (let [factory (DocumentBuilderFactory/newInstance)
-        builder (.newDocumentBuilder factory)
-        impl (.getDOMImplementation builder)
-        doc-type (.createDocumentType impl "html"
-                                      "-//W3C//DTD XHTML 1.0 Transitional//EN"
-                                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd")]
-    (.createDocument impl "http://www.w3.org/1999/xhtml" "html" doc-type)))
-
-;;; Build a DOM Document out of a Clojure XML representation.
-(defn xml->DOM
-  [tree]
-  (let [top (make-document)
-        walk (fn walk [#^Node parent node]
-               (if (string? node)
-                 (.appendChild parent (.createTextNode top node))
-                 (let [child (.createElement top (name (:tag node)))]
-                   (doseq [[k v] (:attrs node)]
-                     (.setAttribute child (name k) v))
-                   (doseq [x (:content node)]
-                     (walk child x))
-                   (.appendChild parent child))))
-        root (.getDocumentElement top)]
-    ;(walk top tree)
-    (doseq [[k v] (:attrs tree)]
-      (.setAttribute root (name k) v))
-    (doseq [x (:content tree)]
-      (walk root x))
-    (.setXmlVersion top "1.0")
-    ;(.setDocumentURI top "http://www.w3.org/1999/xhtml")
-    top))
-
-(defn DOM->string
-  [dom]
-  (let [trans (.newTransformer (TransformerFactory/newInstance))
-        writer (StringWriter.)]
-    (.setOutputProperty trans OutputKeys/OMIT_XML_DECLARATION "no")
+(defn- #^TransformerHandler setup-transformer
+  "Construct a document transformer, ready to have data pushed to it,
+  transforming to the given writer.  Returns the TransformerHandler."
+  [doctype, #^Writer writer]
+  (let [result (StreamResult. writer)
+        tf #^SAXTransformerFactory (SAXTransformerFactory/newInstance)
+        hd (.newTransformerHandler tf)
+        trans (.getTransformer hd)]
+    (.setOutputProperty trans OutputKeys/ENCODING "UTF-8")
+    (when doctype
+      (.setOutputProperty trans OutputKeys/DOCTYPE_PUBLIC (:public doctype))
+      (.setOutputProperty trans OutputKeys/DOCTYPE_SYSTEM (:system doctype)))
     (.setOutputProperty trans OutputKeys/METHOD "xml")
     (.setOutputProperty trans OutputKeys/INDENT "yes")
-    (.setOutputProperty trans OutputKeys/STANDALONE "no")
-    (.setOutputProperty trans OutputKeys/DOCTYPE_PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN")
-    (.setOutputProperty trans OutputKeys/DOCTYPE_SYSTEM "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd")
-    (.transform trans (DOMSource. dom) (StreamResult. writer))
-    (str writer)))
+    (.setResult hd result)
+    hd))
+
+(defn write-xml
+  "Write the xml document 'tree' to the given 'writer', using
+  information from the doctype specifier."
+  [doctype writer tree]
+  (let [hd (setup-transformer doctype writer)
+        atts (AttributesImpl.)
+        walk (fn walk [node]
+               (if (string? node)
+                 (.characters hd (.toCharArray #^String node) 0 (count node))
+                 (do
+                   (.clear atts)
+                   (doseq [[k v] (:attrs node)]
+                     (.addAttribute atts "" "" (name k) "CDATA" v))
+                   (.startElement hd "" "" (name (:tag node)) atts)
+                   (doseq [child (:content node)]
+                     (walk child))
+                   (.endElement hd "" "" (name (:tag node))))
+               ))]
+    (.startDocument hd)
+    (walk tree)
+    (.endDocument hd)))
 
 (defn ->string
-  ;;; Wrong calling convention here.
   [doctype tree]
-  (DOM->string (xml->DOM tree)))
+  (let [writer (StringWriter.)]
+    (write-xml doctype writer tree)
+    (str writer)))
 
 (def xhtml1-attrs
   {:lang "en"
