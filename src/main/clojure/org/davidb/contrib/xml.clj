@@ -1,8 +1,7 @@
 (ns org.davidb.contrib.xml
   (:use clojure.xml)
   (:use [clojure.contrib [pprint :only [pprint]]])
-  (:import [clojure.lang Named])
-  (:import [org.apache.commons.lang StringEscapeUtils]))
+  (:import [clojure.lang Named]))
 
 ;;; Fixes for some deficiencies to Clojure's XML handling.  Parse seems to
 ;;; work OK, but generation is lacking.
@@ -10,10 +9,6 @@
 ;;; However, the parse produces unescaped XML.
 
 ;;; We disallow raw XML in the string content.
-
-;;; TODO: detect legal xhtml entities and convert the to named
-;;; entities.
-;;; TODO: Convert out of range characters to &#...; notation.
 
 ;;; Some utilities to make it easier to construct XML elements and the
 ;;; tree.  Also can check that the tree is valid as it is being built.
@@ -64,7 +59,11 @@
 (defn escape-xml
   "Change invalid XML characters into entities."
   [string]
-  (StringEscapeUtils/escapeHtml #^String string))
+  (.. #^String string
+    (replace "&" "&amp;")
+    (replace "<" "&lt;")
+    (replace ">" "&gt;")
+    (replace "\"" "&quot;")))
 
 ;;; Non-functional, StringBuilder version.
 (def *out-writer*)

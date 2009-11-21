@@ -22,5 +22,5 @@
         (map #(list 'org.davidb.contrib.html/deftag %) tags)))
 
 (deftags html head body h1 h2 h3 h4 h5 h6 p hr br table tr th td
-         title link col
+         title link col span
          ul li ol dl dt dd a b)
