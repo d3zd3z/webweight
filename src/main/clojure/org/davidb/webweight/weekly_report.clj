@@ -165,9 +165,17 @@
       (html/title "Weight report")
       (html/link :attrs {:rel "stylesheet",
                          :type "text/css",
-                         :href "/style/clean-table.css"}))
+                         :media "screen",
+                         :href "/style/clean-table.css"})
+      (html/link :attrs {:rel "stylesheet",
+                         :type "text/css",
+                         :media "print"
+                         :href "/style/clean-table-print.css"}))
     (html/body
-      (html/h1 (get-date-range weekly))
+      (html/h1
+        "David Brown"
+        (html/br)
+        (get-date-range weekly))
       (make-table weekly)
       (html/p :attrs {:class "copyright"}
               "WebWeight.  Copyright \u00A9 2009, David L. Brown, Jr")
