@@ -46,17 +46,6 @@
 
       :else [(into {} attrs) args])))
 
-(defn node
-  "Build an xml element.  The tag must be a keyword.  The optional
-  attributes must be a map of keywords or strings to strings.  The
-  contents must be a sequence of either elements, or strings."
-  ([tag]
-   (struct element tag))
-  ([tag content]
-   (struct element tag nil (check-content content)))
-  ([tag atts content]
-   (struct element tag atts (check-content content))))
-
 (defn elt
   "Build an xml element.  Tag must be a keyword.  This is followed by
   zero or more pairs of arguments of either [Keyword/Symbol String]

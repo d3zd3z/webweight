@@ -126,16 +126,16 @@
     ~(struct column "Date" nil (fn [_] ""))
     ~(struct column "Net Weight" :net-change (st "%.2f"))])
 (defvar table-header
-  (xml/node :tr (map (fn [r] (html/th (:title r))) columns)))
+  (xml/eltcat :tr (map (fn [r] (html/th (:title r))) columns)))
 (defvar table-sep
-  (xml/node :tr (replicate (count columns) (html/th))))
+  (xml/eltcat :tr (replicate (count columns) (html/th))))
 (defn make-table-row
   [daily columns]
   (let [fields
         (let-map [col columns]
           (let [item (get daily (:field col))]
             (html/td ((:formatter col) item))))]
-    (xml/node :tr fields)))
+    (xml/eltcat :tr fields)))
 
 (defn make-table
   [weekly]
