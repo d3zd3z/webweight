@@ -40,7 +40,7 @@
        (xml/->string
          xml/xhtml1-strict
          (html/html
-           :attrs xml/xhtml1-attrs
+           xml/adding-attrs xml/xhtml1-attrs
            (html/head (html/title "404 - Not found"))
            (apply html/body
                   (html/h1 "404 - Not found")

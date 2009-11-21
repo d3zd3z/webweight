@@ -23,10 +23,33 @@
       (throw (Exception. (str "Invalid content item: " item)))))
   content)
 
+(defonce adding-attrs ::flag-these-arguments-as-attributes)
+
+(defn- decode-xml-args
+  "Remove XML attribute arguments from the beginning.  Removes pairs
+  of arguments that are either a [keyword/symbol string] to add a
+  single attribute named by the keyword or symbolc, a pair of the
+  magic 'xml/adding-attrs' followed by a map from keywords to values
+  for additional arguments.  Returns an attribute map followed by the
+  rest of the arguments followed by the first argument not matching
+  this pattern."
+  [args]
+  (loop [[k v & more :as args] args
+         attrs []]
+    (cond
+      (and (instance? Named k)
+           (string? v))
+      (recur more (conj attrs [k v]))
+
+      (= k adding-attrs)
+      (recur more (into attrs v))
+
+      :else [(into {} attrs) args])))
+
 (defn node
-  "Build an xml element.  The tag must be a keyword.  The optional attributes
-  must be a map of keywords or strings to strings.  The contents must
-  be a sequence of either elements, or strings."
+  "Build an xml element.  The tag must be a keyword.  The optional
+  attributes must be a map of keywords or strings to strings.  The
+  contents must be a sequence of either elements, or strings."
   ([tag]
    (struct element tag))
   ([tag content]
@@ -35,23 +58,22 @@
    (struct element tag atts (check-content content))))
 
 (defn elt
-  "Build an xml element.  Tag must be a keyword.  This can be followed by
-  :attrs map to give attributes.  The rest must be the contents of the
-  element."
+  "Build an xml element.  Tag must be a keyword.  This is followed by
+  zero or more pairs of arguments of either [Keyword/Symbol String]
+  for individual attributes, or [xml/adding-attrs Map] to add a mapping
+  to the attribute list.  The rest of the arguments are the contents."
   [tag & args]
-  (if (= (first args) :attrs)
-    (struct element tag (second args)
-            (check-content (drop 2 args)))
-    (struct element tag nil (check-content args))))
+  (let [[atts content] (decode-xml-args args)]
+    (struct element tag atts (check-content content))))
+
 
 (defn eltcat
-  "Like 'elt', but the arguments should each be sequences.  All of the
-  sequences will be concatted together to make the contents."
+  "Like 'elt', but the rest of the arguments should each be sequences.
+  All of the sequences will be concatted together to make the
+  contents."
   [tag & args]
-  (if (= (first args) :attrs)
-    (struct element tag (second args)
-            (check-content (apply concat (drop 2 args))))
-    (struct element tag nil (check-content (apply concat args)))))
+  (let [[atts content] (decode-xml-args args)]
+    (struct element tag atts (check-content (apply concat content)))))
 
 ;;; Then, a new emit, since the Clojure one is completely wrong, and
 ;;; doesn't properly escape characters.

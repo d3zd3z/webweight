@@ -79,7 +79,7 @@
 (defn encode-date
   "HTML tree encoding a date and it's link.  Result is flat."
   [#^Date date]
-  (html/a :attrs {:href (.format url-date-parser date)}
+  (html/a :href (.format url-date-parser date)
           (.format human-date-parser date)))
 
 (defn encode-month
@@ -103,7 +103,7 @@
   "Generate the index based on the current log files."
   []
   (html/html
-    :attrs xml/xhtml1-attrs
+    xml/adding-attrs xml/xhtml1-attrs
     (html/head (html/title "Weight reports"))
     (apply html/body
            (html/h1 "Weight reports")

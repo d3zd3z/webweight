@@ -141,7 +141,7 @@
   [weekly]
   (let [days (update-net-change (map fold-day weekly))]
     (xml/eltcat
-      :table :attrs {:border "1"}
+      :table :border "1"
       [table-header]
       (map #(make-table-row % columns) days)
       [table-header
@@ -160,26 +160,26 @@
   "Generate a weekly report from the weekly record."
   [weekly]
   (html/html
-    :attrs xml/xhtml1-attrs
+    xml/adding-attrs xml/xhtml1-attrs
     (html/head
       (html/title "Weight report")
-      (html/link :attrs {:rel "stylesheet",
-                         :type "text/css",
-                         :media "screen",
-                         :href "/style/clean-table.css"})
-      (html/link :attrs {:rel "stylesheet",
-                         :type "text/css",
-                         :media "print"
-                         :href "/style/clean-table-print.css"}))
+      (html/link :rel "stylesheet",
+                 :type "text/css",
+                 :media "screen",
+                 :href "/style/clean-table.css")
+      (html/link :rel "stylesheet",
+                 :type "text/css",
+                 :media "print"
+                 :href "/style/clean-table-print.css"))
     (html/body
       (html/h1
         "David Brown"
         (html/br)
         (get-date-range weekly))
       (make-table weekly)
-      (html/p :attrs {:class "copyright"}
+      (html/p :class "copyright"
               "WebWeight.  Copyright \u00A9 2009, David L. Brown, Jr")
-      (html/p (html/a :attrs {:href "?" :class "nav"} "\u21D0 Back to index")))))
+      (html/p (html/a :href "?" :class "nav" "\u21D0 Back to index")))))
 
 ;(use '[org.davidb.webweight.daily :as daily])
 ;(def x (daily/decode-file (java.io.File. "/home/davidb/weight/2009-11-11.dat")))
