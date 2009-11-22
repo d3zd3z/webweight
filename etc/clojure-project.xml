@@ -17,7 +17,8 @@
   <target name="default-lifecycle"
     depends="compile-lifecycle, jar" />
   <target name="compile-lifecycle"
-    depends="resolve, copy-resources, compile-java, compile-clojure" />
+    depends="resolve, copy-resources, compile-java, compile-clojure,
+             compile-native" />
 
   <target name="clean" depends="clean-lifecycle"/>
 
@@ -29,6 +30,11 @@
   <property name="classes.dir" location="${basedir}/build/classes"/>
   <property name="ivy.lib.dir" location="${basedir}/lib"/>
   <property name="onejar.scratch.dir" location="${build.dir}/onejar"/>
+  <property name="ivy.retrieve.pattern"
+    value="${ivy.lib.dir}/[conf]/[artifact]-[revision].[ext]"/>
+  <property name="jni.headers.dir" location="${build.dir}/jni-headers"/>
+  <property name="jni.obj.dir" location="${build.dir}/jni-obj"/>
+  <property name="jni.src.dir" location="native"/>
 
   <target name="clean-lifecycle">
     <delete dir="${build.dir}"/>
@@ -82,6 +88,40 @@
     </java>
   </target>
 
+  <target name="compile-native" depends="javah,setup-cpp" if="jni.classes"
+    xmlns:cpptasks="antlib:net.sf.antcontrib.cpptasks">
+    <mkdir dir="${jni.obj.dir}"/>
+    <cpptasks:cc outtype="shared" objdir="${jni.obj.dir}"
+      outfile="${build.dir}/${jni.soname}-${os.arch}-${os.name}">
+      <includepath location="${jni.headers.dir}"/>
+      <sysincludepath location="${java.home}/include"/>
+      <sysincludepath location="${java.home}/include/linux"/>
+      <sysincludepath location="${java.home}/../include"/>
+      <sysincludepath location="${java.home}/../include/linux"/>
+      <fileset dir="${jni.src.dir}" includes="**/*.c"/>
+    </cpptasks:cc>
+  </target>
+
+  <target name="javah" if="jni.classes">
+    <mkdir dir="${jni.headers.dir}"/>
+    <javah destdir="${jni.headers.dir}">
+      <classpath>
+	<path location="${classes.dir}"/>
+	<!-- <path refid="full.classpath"/> -->
+      </classpath>
+      <class name="${jni.classes}"/>
+    </javah>
+  </target>
+
+  <target name="setup-cpp" depends="resolve" if="jni.classes">
+    <taskdef uri="antlib:net.sf.antcontrib.cpptasks"
+      resource="net/sf/antcontrib/cpptasks/antlib.xml">
+      <classpath>
+	<fileset dir="${ivy.lib.dir}/antlib" includes="*.jar"/>
+      </classpath>
+    </taskdef>
+  </target>
+
   <target name="jar" depends="compile-lifecycle">
     <jar jarfile="${jarname}">
       <fileset dir="${classes.dir}" />
@@ -98,7 +138,10 @@
 	<include name="**/*.java"/>
 	<include name="doc/*"/>
       </zipfileset>
-      <zipfileset dir="${ivy.lib.dir}" includes="*.jar" prefix="lib"/>
+      <zipfileset dir="${build.dir}" prefix="binlib">
+	<include name="*-${os.arch}-${os.name}.so"/>
+      </zipfileset>
+      <zipfileset dir="${ivy.lib.dir}/default" includes="*.jar" prefix="lib"/>
       <manifest>
 	<attribute name="One-Jar-Main-Class" value="${main.class}"/>
 	<attribute name="Main-Class" value="com.simontuffs.onejar.Boot"/>
@@ -119,7 +162,7 @@
 
   <target name="resolve">
     <ivy:resolve log="quiet" />
-    <ivy:retrieve conf="default" type="jar" />
+    <ivy:retrieve type="jar" />
 
     <property name="jarname" location="${build.dir}/${ivy.module}.jar"/>
     <property name="one-jarname" location="${build.dir}/${ivy.module}-one.jar"/>
