@@ -161,7 +161,7 @@
   </target>
 
   <target name="resolve">
-    <ivy:resolve log="quiet" />
+    <ivy:resolve log="download-only" />
     <ivy:retrieve type="jar" />
 
     <property name="jarname" location="${build.dir}/${ivy.module}.jar"/>
