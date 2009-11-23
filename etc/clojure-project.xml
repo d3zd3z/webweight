@@ -8,11 +8,12 @@
   ==== Template project for a basic clojure project.  See the
   ==== properties below for things that can be overridden.
   ==== The default project name comes from the ivy.xml file.
-  ==== You need to set the property main.class for the one-jar
-  ==== target to work.
+  ==== You need to set the property main.class for the executable
+  ==== jar to work (uberjar).
   -->
 
   <target name="all" depends="default-lifecycle"/>
+  <target name="compile" depends="compile-lifecycle"/>
 
   <target name="default-lifecycle"
     depends="compile-lifecycle, jar" />
@@ -21,6 +22,7 @@
              compile-native" />
 
   <target name="clean" depends="clean-lifecycle"/>
+  <target name="test" depends="test-clojure"/>
 
   <!-- Standard package layout. -->
   <property name="src.dir" location="${basedir}/src"/>
@@ -29,12 +31,14 @@
   <property name="build.dir" location="${basedir}/build"/>
   <property name="classes.dir" location="${basedir}/build/classes"/>
   <property name="ivy.lib.dir" location="${basedir}/lib"/>
+  <property name="uberjar.scratch.dir" location="${build.dir}/uberjar"/>
   <property name="onejar.scratch.dir" location="${build.dir}/onejar"/>
   <property name="ivy.retrieve.pattern"
     value="${ivy.lib.dir}/[conf]/[artifact]-[revision].[ext]"/>
   <property name="jni.headers.dir" location="${build.dir}/jni-headers"/>
   <property name="jni.obj.dir" location="${build.dir}/jni-obj"/>
   <property name="jni.src.dir" location="native"/>
+  <property name="compile.script" location="etc/compile_all.clj"/>
 
   <target name="clean-lifecycle">
     <delete dir="${build.dir}"/>
@@ -57,6 +61,9 @@
     <condition property="src.present">
       <available file="${src.dir}" type="dir"/>
     </condition>
+    <condition property="test.present">
+      <available file="${test.dir}" type="dir"/>
+    </condition>
   </target>
 
   <target name="compile-java" depends="check-src, classpaths" if="src.present">
@@ -64,27 +71,36 @@
     <javac srcdir="${src.dir}" destdir="${classes.dir}"/>
   </target>
 
-  <target name="compile-clojure" depends="check-src, classpaths" if="src.present">
+  <target name="compile-clojure" depends="compile-java, check-src, classpaths" if="src.present">
     <mkdir dir="${classes.dir}"/>
-    <!-- Scan for clojure source, and convert to namespace names. -->
-    <pathconvert pathsep=" " property="namespaces">
-      <fileset dir="${src.dir}" includes="**/*.clj" />
-      <chainedmapper>
-	<packagemapper from="${src.dir}/*.clj" to="*" />
-	<filtermapper>
-	  <replacestring from="_" to="-" />
-	</filtermapper>
-      </chainedmapper>
-    </pathconvert>
-
-    <java classname="clojure.lang.Compile">
+    <!-- Without the fork, we get a stacktrace on errors. -->
+    <java classname="clojure.main" failonerror="true" fork="true">
       <classpath>
 	<path location="${src.dir}"/>
 	<path location="${classes.dir}"/>
 	<path refid="full.classpath"/>
       </classpath>
-      <sysproperty key="clojure.compile.path" value="${classes.dir}"/>
-      <arg line="${namespaces}" />
+      <arg value="${compile.script}"/>
+      <arg value="${src.dir}"/>
+      <arg value="${classes.dir}"/>
+    </java>
+  </target>
+
+  <target name="test-clojure" depends="compile-clojure, compile-native"
+    if="test.present">
+    <!-- Let the Clojure code do the work of processing the test
+    ==== names. -->
+    <path id="test.sources">
+      <fileset dir="${test.dir}" includes="**/test_*.clj"/>
+    </path>
+    <java classname="${test.main}" fork="true" failonerror="true">
+      <classpath>
+	<path location="${test.dir}"/>
+	<path location="${src.dir}"/>
+	<path location="${classes.dir}"/>
+	<path refid="full.classpath"/>
+      </classpath>
+      <arg value="${test.dir}"/>
     </java>
   </target>
 
@@ -92,7 +108,7 @@
     xmlns:cpptasks="antlib:net.sf.antcontrib.cpptasks">
     <mkdir dir="${jni.obj.dir}"/>
     <cpptasks:cc outtype="shared" objdir="${jni.obj.dir}"
-      outfile="${build.dir}/${jni.soname}-${os.arch}-${os.name}">
+      outfile="${classes.dir}/${jni.soname}-${os.arch}-${os.name}">
       <includepath location="${jni.headers.dir}"/>
       <sysincludepath location="${java.home}/include"/>
       <sysincludepath location="${java.home}/include/linux"/>
@@ -102,7 +118,7 @@
     </cpptasks:cc>
   </target>
 
-  <target name="javah" if="jni.classes">
+  <target name="javah" depends="compile-java" if="jni.classes">
     <mkdir dir="${jni.headers.dir}"/>
     <javah destdir="${jni.headers.dir}">
       <classpath>
@@ -124,9 +140,27 @@
 
   <target name="jar" depends="compile-lifecycle">
     <jar jarfile="${jarname}">
-      <fileset dir="${classes.dir}" />
+      <fileset dir="${classes.dir}" excludes="history.xml"/>
       <fileset dir="${src.dir}" includes="**/*.clj" />
     </jar>
+  </target>
+
+  <target name="uberjar" depends="resolve, compile-lifecycle,
+    unpack-dependencies">
+    <jar jarfile="${uber.jarname}">
+      <fileset dir="${classes.dir}" excludes="history.xml"/>
+      <fileset dir="${uberjar.scratch.dir}"
+	excludes="**/MANIFEST.MF"/>
+      <manifest>
+	<attribute name="Main-Class" value="${main.class}"/>
+      </manifest>
+    </jar>
+  </target>
+
+  <target name="unpack-dependencies">
+    <unjar dest="${uberjar.scratch.dir}">
+      <fileset dir="${ivy.lib.dir}/default" includes="*.jar"/>
+    </unjar>
   </target>
 
   <target name="one-jar" depends="resolve, jar, unpack-onejar">
@@ -161,10 +195,11 @@
   </target>
 
   <target name="resolve">
-    <ivy:resolve log="download-only" />
+    <ivy:resolve log="download" />
     <ivy:retrieve type="jar" />
 
     <property name="jarname" location="${build.dir}/${ivy.module}.jar"/>
+    <property name="uber.jarname" location="${build.dir}/${ivy.module}-uber.jar"/>
     <property name="one-jarname" location="${build.dir}/${ivy.module}-one.jar"/>
   </target>
 </project>
