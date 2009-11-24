@@ -17,7 +17,7 @@
 ;;; fields are accumulated, and others are computed at the end.
 
 (defvar daily-sum-fields
-  [:S :C :E :B :F :V :P :PA :total-calories]
+  [:S :C :E :B :F :V :P :PA :total-calories :net-cals]
   "Fields from the records that are folded to produce an summary.")
 (defvar empty-day
   (into {} (map (fn [k] [k 0]) daily-sum-fields)))
